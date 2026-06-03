@@ -74,9 +74,11 @@ async function saveDeviceKey(userId, rawBytes) {
 
 // Session backend (the *unlocked* CEK, cached so a web refresh doesn't force the
 // passphrase tier to re-unlock — and re-run Argon2 — on every load). Web:
-// sessionStorage (survives refresh, cleared on tab/browser close, never on disk);
-// native/Node: in-memory only. Distinct from the device-key (localStorage)
-// backend. Injectable for the harness.
+// sessionStorage (survives refresh, cleared on tab/browser close, never on disk),
+// plus an optional requestFromPeers() that fetches the CEK from another open
+// same-origin tab (so a fresh tab needn't re-prompt); native/Node: in-memory
+// only. Distinct from the device-key (localStorage) backend. Injectable for the
+// harness (which omits requestFromPeers).
 let sessionBackend = null;
 export function __setSessionBackend(b) { sessionBackend = b; }
 async function sessionStore() {
@@ -140,14 +142,23 @@ export function getUnlockedCEK(userId) { return unlocked.get(userId) ?? null; }
 export function lock(userId) { unlocked.delete(userId); clearUnlockedCEK(userId); }
 export function lockAll() { unlocked.clear(); clearAllUnlockedCEKs(); }
 
-// Re-hydrate the unlocked CEK from the session cache (e.g. after a web refresh
-// wiped memory) so the passphrase tier doesn't re-prompt. No-op if it's already
-// in memory or nothing is cached. Returns the CEK, or null.
+// Re-hydrate the unlocked CEK so the passphrase tier doesn't re-prompt: from this
+// tab's session cache (after a web refresh wiped memory), or — failing that —
+// from an already-open same-origin tab over the session backend's peer channel
+// (a fresh tab has its own empty sessionStorage). A peer answer is cached locally
+// so later refreshes in this tab are fast. No-op if it's already in memory or
+// nothing is available anywhere. Returns the CEK, or null.
 export async function restoreSession(userId) {
   const live = unlocked.get(userId);
   if (live) return live;
+  const store = await sessionStore();
+  const key = cekKey(userId);
   let raw;
-  try { raw = await (await sessionStore()).getItem(cekKey(userId)); } catch { return null; }
+  try { raw = await store.getItem(key); } catch { return null; }
+  if (!raw && store.requestFromPeers) {
+    try { raw = await store.requestFromPeers(key); } catch { raw = null; }
+    if (raw) { try { await store.setItem(key, raw); } catch { /* best-effort local cache */ } }
+  }
   if (!raw) return null;
   const cek = await importCEKRaw(b64.decode(raw));
   unlocked.set(userId, cek);
