@@ -12,8 +12,9 @@
 // tier). Managed is wrapped by a server-held key, so its record carries the raw
 // CEK over the wire (the tier's intended operator-can-read property).
 //
-// Both backends are injectable (__setRecordBackend / __setStorageBackend) so the
-// Node harness (keyring.mjs) runs the real logic in-memory. envelope.js is pure.
+// The backends are injectable (__setRecordBackend / __setStorageBackend /
+// __setSessionBackend) so the Node harness (keyring.mjs) runs the real logic
+// in-memory. envelope.js is pure.
 // =============================================================================
 
 import {
@@ -35,12 +36,12 @@ export const TIER_INFO = {
   device: {
     label: 'This device',
     guarantee: 'hard',
-    summary: 'Encrypted with a key kept on this device — no passphrase to type. We cannot read your stored record. It is tied to this device: sign in elsewhere, or clear this browser, and the record becomes unreadable.',
+    summary: 'Encrypted with a key kept on this device — no passphrase to type. We cannot read your stored record. It is tied to this device: Clear this browser / app memory, and the record becomes unreadable.',
   },
   managed: {
-    label: 'Managed (recoverable)',
+    label: 'Managed',
     guarantee: 'soft',
-    summary: 'Encrypted at rest, but we hold the key, so we can read your records if compelled — and can restore access if you lose yours. Protects against a data leak that does not also take the key, not against us being fully compromised.',
+    summary: 'Encrypted at rest, but we hold the key, so we can read your records if compelled — but you can never lock yourself out, since there is no passphrase or device key for you to lose. Protects against a data leak.',
   },
 };
 
@@ -69,6 +70,29 @@ async function loadDeviceKey(userId) {
 }
 async function saveDeviceKey(userId, rawBytes) {
   await (await storage()).setItem(deviceKeyKey(userId), b64.encode(rawBytes));
+}
+
+// Session backend (the *unlocked* CEK, cached so a web refresh doesn't force the
+// passphrase tier to re-unlock — and re-run Argon2 — on every load). Web:
+// sessionStorage (survives refresh, cleared on tab/browser close, never on disk);
+// native/Node: in-memory only. Distinct from the device-key (localStorage)
+// backend. Injectable for the harness.
+let sessionBackend = null;
+export function __setSessionBackend(b) { sessionBackend = b; }
+async function sessionStore() {
+  if (!sessionBackend) sessionBackend = (await import('../sessionStore')).sessionStore;
+  return sessionBackend;
+}
+const cekKey = (userId) => `crossroads_enc_cek:${userId}`;
+async function cacheUnlockedCEK(userId, cek) {
+  try { await (await sessionStore()).setItem(cekKey(userId), b64.encode(await exportCEKRaw(cek))); }
+  catch { /* session cache is best-effort — never block an unlock on it */ }
+}
+async function clearUnlockedCEK(userId) {
+  try { await (await sessionStore()).removeItem(cekKey(userId)); } catch { /* ignore */ }
+}
+async function clearAllUnlockedCEKs() {
+  try { await (await sessionStore()).clear(); } catch { /* ignore */ }
 }
 
 // In-memory unlocked CEKs (cleared on lock / logout).
@@ -113,13 +137,28 @@ export async function getTier(userId) { return (await getRecord(userId))?.tier ?
 export function getTierInfo(tier) { return TIER_INFO[tier] ?? null; }
 export async function isProvisioned(userId) { return (await getRecord(userId)) != null; }
 export function getUnlockedCEK(userId) { return unlocked.get(userId) ?? null; }
-export function lock(userId) { unlocked.delete(userId); }
-export function lockAll() { unlocked.clear(); }
+export function lock(userId) { unlocked.delete(userId); clearUnlockedCEK(userId); }
+export function lockAll() { unlocked.clear(); clearAllUnlockedCEKs(); }
+
+// Re-hydrate the unlocked CEK from the session cache (e.g. after a web refresh
+// wiped memory) so the passphrase tier doesn't re-prompt. No-op if it's already
+// in memory or nothing is cached. Returns the CEK, or null.
+export async function restoreSession(userId) {
+  const live = unlocked.get(userId);
+  if (live) return live;
+  let raw;
+  try { raw = await (await sessionStore()).getItem(cekKey(userId)); } catch { return null; }
+  if (!raw) return null;
+  const cek = await importCEKRaw(b64.decode(raw));
+  unlocked.set(userId, cek);
+  return cek;
+}
 
 export async function provision(userId, tier, opts = {}) {
   const cek = await generateCEK();
   await putRecord(userId, await buildRecord(userId, cek, tier, opts));
   unlocked.set(userId, cek);
+  await cacheUnlockedCEK(userId, cek);
   return cek;
 }
 
@@ -128,6 +167,7 @@ export async function unlock(userId, opts = {}) {
   if (!rec) throw new Error('NOT_PROVISIONED');
   const cek = await cekFromRecord(userId, rec, opts);
   unlocked.set(userId, cek);
+  await cacheUnlockedCEK(userId, cek);
   return cek;
 }
 

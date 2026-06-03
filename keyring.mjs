@@ -26,6 +26,15 @@ keyring.__setRecordBackend({
   async get(uid) { return recs.has(uid) ? recs.get(uid) : null; },
   async put(uid, record) { recs.set(uid, record); },
 });
+// In-memory session backend (stands in for web sessionStorage — the unlocked-CEK
+// cache that lets a refresh skip re-unlock).
+const sess = new Map();
+keyring.__setSessionBackend({
+  async getItem(k) { return sess.has(k) ? sess.get(k) : null; },
+  async setItem(k, v) { sess.set(k, v); },
+  async removeItem(k) { sess.delete(k); },
+  async clear() { sess.clear(); },
+});
 
 let pass = 0, fail = 0;
 const ok = (c, m) => { if (c) { pass++; console.log('  \x1b[32m✓\x1b[0m ' + m); } else { fail++; console.log('  \x1b[31m✗ ' + m + '\x1b[0m'); } };

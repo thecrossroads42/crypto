@@ -111,12 +111,14 @@ eq(row.name, 'Whether to leave the job', 'card name decrypts');
 eq(row.icon, '🪧', 'card icon decrypts');
 eq(row.summary.headline, 'Security versus the cost of staying', 'card headline decrypts');
 
-// 6. Wrong key cannot read (sanity: a different CEK fails).
+// 6. Wrong key cannot read (sanity: a different CEK can't recover the content).
+//    Decryption degrades gracefully (no throw) — the record is marked
+//    undecryptable and the plaintext is not exposed.
 console.log('\n6. Wrong key cannot read');
 const otherCek = await generateCEK();
-let blocked = false;
-try { await decryptFullVisit(otherCek, serverGet(ID)); } catch { blocked = true; }
-ok(blocked, 'a different CEK cannot decrypt the stored content');
+const wrong = await decryptFullVisit(otherCek, serverGet(ID));
+ok(wrong.undecryptable === true, 'a different CEK is rejected (record marked undecryptable, no throw)');
+ok(!wrong.visit.messages?.length && wrong.visit.name === 'Unreadable visit', 'no plaintext leaks; shows an unreadable placeholder');
 
 // 7. Layer 3b contract: a decrypted visit, shaped as buildClientContext does,
 //    exposes the fields the server's formatSummaryEntries reads for the

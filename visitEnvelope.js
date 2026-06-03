@@ -55,22 +55,35 @@ export async function decryptFullVisit(cek, wireVisit) {
   if (!wireVisit?.encrypted || !wireVisit.enc?.content) {
     return { passthrough: true, visit: wireVisit };
   }
-  const content = await decryptRecord(cek, wireVisit.enc.content);
   const { enc, encrypted, ...meta } = wireVisit;
-  return { passthrough: false, content, visit: { ...meta, ...content } };
+  try {
+    const content = await decryptRecord(cek, wireVisit.enc.content);
+    return { passthrough: false, content, visit: { ...meta, ...content } };
+  } catch (err) {
+    // Wrong/rotated key or corrupt ciphertext — degrade instead of throwing, so
+    // one undecryptable record can't break the screen (or, in a list, the
+    // readable records alongside it). The cleartext metadata still renders.
+    console.warn(`Visit ${meta.id}: content could not be decrypted (${err?.name || 'error'}) — key mismatch?`);
+    return { passthrough: false, undecryptable: true, content: {}, visit: { ...meta, undecryptable: true, name: 'Unreadable visit', messages: [] } };
+  }
 }
 
 // Decrypt a list row's card into display fields. Pass-through if not encrypted.
 export async function decryptCard(cek, entry) {
   if (!entry?.encrypted || !entry.enc?.card) return entry;
-  const card = await decryptRecord(cek, entry.enc.card);
   const { enc, encrypted, ...meta } = entry;
-  return {
-    ...meta,
-    name: card.name,
-    icon: card.icon,
-    summary: meta.summary || (card.headline
-      ? { headline: card.headline, keyTopics: card.keyTopics, outcome: card.outcome }
-      : null),
-  };
+  try {
+    const card = await decryptRecord(cek, entry.enc.card);
+    return {
+      ...meta,
+      name: card.name,
+      icon: card.icon,
+      summary: meta.summary || (card.headline
+        ? { headline: card.headline, keyTopics: card.keyTopics, outcome: card.outcome }
+        : null),
+    };
+  } catch (err) {
+    console.warn(`Visit ${meta.id}: card could not be decrypted (${err?.name || 'error'}) — key mismatch?`);
+    return { ...meta, name: 'Unreadable visit', icon: '🔒', summary: null, undecryptable: true };
+  }
 }

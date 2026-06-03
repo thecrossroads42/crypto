@@ -122,8 +122,10 @@ async function deriveKEKFromPassphrase(passphrase, salt, kdf = KDF) {
       ['encrypt', 'decrypt'],
     );
   }
-  // Argon2id (default). @noble returns 32 raw bytes → AES-256 key.
-  const raw = argon2id(utf8.encode(passphrase), salt, { t: kdf.t, m: kdf.m, p: kdf.p, dkLen: 32 });
+  // Argon2id (default). @noble returns 32 raw bytes → AES-256 key. Awaited so a
+  // platform may swap in an async native Argon2 (RN/libsodium — noble freezes
+  // Hermes); `await` is a no-op on noble's synchronous return.
+  const raw = await argon2id(utf8.encode(passphrase), salt, { t: kdf.t, m: kdf.m, p: kdf.p, dkLen: 32 });
   return subtle.importKey('raw', raw, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
 }
 
