@@ -1,5 +1,5 @@
 // =============================================================================
-// Client-side encryption — Layer 2 round-trip verification (PROTOTYPE)
+// Client-side encryption — Layer 2 round-trip verification
 //
 //   node frontend/src/services/crypto/roundtrip.mjs
 //

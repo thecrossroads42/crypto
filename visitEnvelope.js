@@ -1,5 +1,5 @@
 // =============================================================================
-// Client-side encryption — pure visit transform (PROTOTYPE, Layer 2)
+// Client-side encryption — pure visit transform (Layer 2)
 //
 // The content-split / encrypt / decrypt logic, with NO React-Native or session
 // coupling: every function takes an explicit CEK. visitCrypto.js is the thin

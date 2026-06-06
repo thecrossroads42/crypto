@@ -1,5 +1,5 @@
 // =============================================================================
-// Client-side encryption — longitudinal logic, ported pure (PROTOTYPE)
+// Client-side encryption — longitudinal logic, ported pure
 //
 // When the longitudinal stores (heldForks / judgments) are client-encrypted,
 // the server can't read them, so the reconcile + consent-gate logic that lives

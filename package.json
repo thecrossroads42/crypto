@@ -1,11 +1,53 @@
 {
-  "name": "thecrossroads-crypto",
-  "version": "0.1.0",
+  "name": "@thecrossroads42/crypto",
+  "version": "0.1.1",
+  "description": "The Crossroads — client-side encryption primitives (audit kit). AES-GCM record envelope with Argon2id passphrase / device / managed key tiers. The privacy-critical code, published so the claims can be verified rather than trusted.",
   "type": "module",
   "license": "MIT",
-  "dependencies": { "@noble/hashes": "^1.4.0" },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "exports": {
+    "./envelope": "./envelope.js",
+    "./keyring": "./keyring.js",
+    "./visitEnvelope": "./visitEnvelope.js",
+    "./longitudinalLogic": "./longitudinalLogic.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "envelope.js",
+    "keyring.js",
+    "visitEnvelope.js",
+    "longitudinalLogic.js",
+    "demo.mjs",
+    "keyring.mjs",
+    "longitudinal.mjs",
+    "roundtrip.mjs",
+    "verify-kit.mjs",
+    "KIT-MANIFEST.txt",
+    "LICENSE",
+    "README.md"
+  ],
+  "dependencies": {
+    "@noble/hashes": "^1.4.0"
+  },
   "scripts": {
     "verify": "node verify-kit.mjs",
     "test": "node roundtrip.mjs && node keyring.mjs && node longitudinal.mjs && node demo.mjs"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thecrossroads42/crypto.git"
+  },
+  "keywords": [
+    "encryption",
+    "client-side-encryption",
+    "argon2",
+    "aes-gcm",
+    "crypto",
+    "thecrossroads"
+  ]
 }

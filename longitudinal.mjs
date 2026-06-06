@@ -1,5 +1,5 @@
 // =============================================================================
-// Client-side encryption — longitudinal consent-gate verification (PROTOTYPE)
+// Client-side encryption — longitudinal consent-gate verification
 //
 //   node frontend/src/services/crypto/longitudinal.mjs
 //

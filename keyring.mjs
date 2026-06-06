@@ -1,5 +1,5 @@
 // =============================================================================
-// Client-side encryption — keyring/tier verification (PROTOTYPE)
+// Client-side encryption — keyring/tier verification
 //
 //   node frontend/src/services/crypto/keyring.mjs
 //

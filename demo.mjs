@@ -1,5 +1,5 @@
 // =============================================================================
-// Client-side encryption — runnable demo (PROTOTYPE)
+// Client-side encryption — runnable demo
 //
 //   node frontend/src/services/crypto/demo.mjs
 //

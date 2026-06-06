@@ -1,5 +1,5 @@
 // =============================================================================
-// Client-side encryption — envelope core (PROTOTYPE)
+// Client-side encryption — envelope core
 //
 // Implements §11 of todo/client-side-encryption.md: every record is encrypted
 // at rest under a per-user *content key* (CEK); what differs per account is only
@@ -19,11 +19,11 @@
 //
 // KDF is Argon2id (memory-hard, @noble/hashes — pure JS, runs in browser + RN +
 // Node). The wrapped record stores the exact params so a record always reproduces
-// its own KEK. Legacy PBKDF2 records (early prototype) are still read, by the
+// its own KEK. Legacy PBKDF2 records (early version) are still read, by the
 // `kdf.name` branch in deriveKEKFromPassphrase, so switching the default didn't
 // strand any existing passphrase account.
 //
-// REMAINING PROTOTYPE CAVEAT:
+// REMAINING CAVEAT:
 //   * The device tier uses a random local key as a stand-in for the production
 //     WebAuthn-PRF / non-extractable platform key. Same envelope either way.
 // =============================================================================
@@ -112,7 +112,7 @@ export async function decryptRecord(cek, env) {
 // record reproduces its own KEK — including legacy PBKDF2 records.
 async function deriveKEKFromPassphrase(passphrase, salt, kdf = KDF) {
   if (kdf.name === 'PBKDF2') {
-    // Legacy early-prototype records — still readable.
+    // Legacy early records — still readable.
     const baseKey = await subtle.importKey('raw', utf8.encode(passphrase), 'PBKDF2', false, ['deriveKey']);
     return subtle.deriveKey(
       { name: 'PBKDF2', hash: kdf.hash, salt, iterations: kdf.iterations },

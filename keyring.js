@@ -1,5 +1,5 @@
 // =============================================================================
-// Client-side encryption — keyring / tier manager (PROTOTYPE)
+// Client-side encryption — keyring / tier manager
 //
 // The single authority over a user's CEK and which §11 tier wraps it. Holds the
 // unlocked CEK in memory for the session.
